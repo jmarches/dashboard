@@ -33,6 +33,7 @@ function dashboard_block_info() {
 		'region' => 'content',
 		'weight' => 0,
 		'visibility' => 1,
+		'mb_enabled' => TRUE,
 	);
 	
 	return $blocks;
@@ -61,6 +62,12 @@ function dashboard_block_configure($delta) {
       $record = db_query('SELECT m.dashboard_delta, m.dashboard_width,
         m.dashboard_height, m.dashboard_swf_path, m.dashboard_config_path
         FROM {multigraph_dashboard} m WHERE m.dashboard_delta=:delta', array(':delta' => $delta))->fetchAssoc();
+
+			// Enables multiblock instance configuration saving
+			$form['multiblock_delta'] = array(
+				'#type' => 'value',
+				'#value' => $block_id,
+			);
 
 // '#default_value' => isset($record['dashboard_width']) ? $record['dashboard_width'] : variable_get('dashboard_width'),
 			$form['width'] = array(
@@ -184,6 +191,12 @@ function dashboard_block_view($delta = '') {
 			//dsm('Hello world');
 //			$block['subject'] = 'Mugl Dashboard';
 			$block['content'] = dashboard_contents($delta);	
+			// Enables multiblock instance configuration saving
+			$block['multiblock_delta'] = array(
+				'#type' => 'value',
+				'#value' => $block_id,
+			);
+
 //			$block['content'] = array('#markup' => 'This is where the Mugl Dashboard should go.');
 			return $block;
 		break;
