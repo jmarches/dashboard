@@ -2,38 +2,91 @@
 
 /*
  * Implements hook_schema().
+ * Below is a possible schema for a block instance table.
+ * To use it, the variables in dashboard_block_view() need to be
+ *   converted to queries.
 */
-/*
+// /*
 function dashboard_schema() {
-	$schema['dashboard_mugl'] = array(
-		'description' => 'The table for holding mugl file data.',
+	$schema['multigraph_dashboard'] = array(
+		'description' => 'The table for holding multigraph dashboard settings.',
 		'fields' => array(
 			'mgid' => array(
 				'type' => 'serial',
 				'unsigned' => TRUE,
 				'not null' => TRUE,
-			),
-			'mugl' => array(
-				'type' => 'text',
-//				'not null' => TRUE,
-//				'default' => 'text',
-			),
-			'mugl_description' => array(
-				'type' => 'varchar',
-				'default' => '',
-			),
-			'mugl_swf' => array(
-				'type' => 'varchar',
-				'default' => '',
-			),
-			'mugl_nid' => array(
+			), 
+			'bid' => array(
 				'type' => 'int',
 				'unsigned' => TRUE,
+//				'not null' => TRUE,
+			),
+			'module' => array(
+				'type' => 'varchar',
+				'length' => 64,
+				'default' => '',
+				'not null' => TRUE,
+			),	
+			'dashboard_delta' => array(
+				'type' => 'varchar',
+				'not null' => TRUE,
+				'length' => 32,
+			),
+			'dashboard_width' => array(
+				'type' => 'int',
+				'unsigned' => TRUE,
+				'not null' => TRUE,
+			),
+			'dashboard_height' => array(
+				'type' => 'int',
+				'unsigned' => TRUE,
+				'not null' => TRUE,
+			),
+			'dashboard_swf_path' => array(
+				'type' => 'varchar',
+				'length' => 256,
+				'default' => '',
+				'not null' => TRUE,
+			),
+			'dashboard_config_path' => array(
+				'type' => 'varchar',
+				'length' => 256,
+				'default' => '',
+				'not null' => TRUE,
 			),
 
 		),
 		'primary key' => array('mgid'),
+		'foreign keys' => array(
+			'block' => array(
+				'table' => 'block',
+				'columns' => array('bid' => 'bid'),
+			),
+		),
 	);
 
 	return $schema;
-} */
+} // */
+
+/*
+ * Implements hook_install().
+ */
+function dashboard_install() {
+  variable_set('dashboard_width',       "524");
+  variable_set('dashboard_height',      "700");
+//  variable_set('dashboard_swf_path',    drupal_get_path('module', 'dashboard') . "/Dashboard.swf");
+// Have to hard code path
+  variable_set('dashboard_swf_path',    'jmarchesmg/' . drupal_get_path('module', 'dashboard') . "/Dashboard.swf");
+  variable_set('dashboard_config_path', "http://dashboard.nemac.org/proxy/flat-dashboard.xml");
+
+}
+
+/*
+ * Implements hook_uninstall().
+*/
+function dashboard_uninstall() {
+  variable_del('dashboard_width');
+  variable_del('dashboard_height');
+  variable_del('dashboard_swf_path');
+  variable_del('dashboard_config_path');
+}

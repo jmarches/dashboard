@@ -4,6 +4,22 @@
  * rendering some content in the block using a renderable array.
 */
 
+// TODO make table for dashboard block instance data, so that each block
+//   has its own config parameters. Currently they are shared, using the
+//   {variable} table.
+
+/*
+	Queries needed for dashboard block instances
+		replacing variable_get
+			'#default_value' => variable_get('var', 'default_value'),
+				get the saved value for the var from the mbid row in the dashboard
+				table, using a query (db_merge). multiblock assigns a serial delta.
+		replacing variable_set
+			variable set('var');
+				use db_update query to alter the value in the dashboard table, using
+				a join with multiblock and/or block.
+*/
+
 /*
  * Implements hook_block_info().
 */
@@ -39,18 +55,30 @@ function dashboard_block_configure($delta) {
 		Get variables: variable_get($name, $default = NULL)
 		Set default (in block config form): '#default_value' => variable_get($name, $default = NULL),
 	*/
+// TODO block_configure seems to be loading the defaults and overriding the
+//		values from the table
+
+      $record = db_query('SELECT m.dashboard_delta, m.dashboard_width,
+        m.dashboard_height, m.dashboard_swf_path, m.dashboard_config_path
+        FROM {multigraph_dashboard} m WHERE m.dashboard_delta=:delta', array(':delta' => $delta))->fetchAssoc();
+
+// '#default_value' => isset($record['dashboard_width']) ? $record['dashboard_width'] : variable_get('dashboard_width'),
 			$form['width'] = array(
 				'#type' => 'textfield',
 				'#title' => 'Dashboard Width',
 				'#description' => 'Set the width for the multigraph dashboard.',
-				'#default_value' => variable_get('dashboard_width', '534'),
+//				'#default_value' => variable_get('dashboard_width', '534'),
+				'#default_value' => isset($record['dashboard_width']) ? $record['dashboard_width'] : variable_get('dashboard_width'),
+
 			);
 
 			$form['height'] = array(
 				'#type' => 'textfield',
 				'#title' => 'Dashboard Height',
 				'#description' => 'Set the height for the multigraph dashboard.',
-				'#default_value' => variable_get('dashboard_height', '700'),
+//				'#default_value' => variable_get('dashboard_height', '700'),
+        '#default_value' => isset($record['dashboard_height']) ? $record['dashboard_height'] : variable_get('dashboard_height'), 
+
 			);
 
 			// Gets the default path to the .swf file
@@ -60,7 +88,9 @@ function dashboard_block_configure($delta) {
 				'#type' => 'textfield',
 				'#title' => 'Dashboard swf Path',
 				'#description' => 'Set the path to the flash swf file.',
-				'#default_value' => variable_get('dashboard_swf_path', $swf_path),
+//				'#default_value' => variable_get('dashboard_swf_path', $swf_path),
+        '#default_value' => isset($record['dashboard_swf_path']) ? $record['dashboard_swf_path'] : variable_get('dashboard_swf_path'),
+
 			);
 
 			// The default config path for the mugl
@@ -70,7 +100,9 @@ function dashboard_block_configure($delta) {
 				'#type' => 'textfield',
 				'#title' => 'Dashboard Config Path',
 				'#description' => 'Set the config path for the mugl (multigraph xml file).',
-				'#default_value' => variable_get('dashboard_config_path', $config_path),
+//				'#default_value' => variable_get('dashboard_config_path', $config_path)d
+        '#default_value' => isset($record['dashboard_config_path']) ? $record['dashboard_config_path'] : variable_get('dashboard_config_path'),
+
 			);
 			break;
 	}
@@ -112,34 +144,34 @@ function dashboard_block_configure($delta) {
  * Implements hook_block_save().
 */
 function dashboard_block_save($delta ='', $edit = array()) {
-	switch ($delta) {
-		case 'multigraph_dashboard':
-			dsm($edit);
+	if ($delta == 'multigraph_dashboard') {
+//			dsm($edit);
 			// Setting the dashboard variables from form values
+/* replacing with query
 			variable_set('dashboard_width', $edit['width']);
 			variable_set('dashboard_height', $edit['height']);
 			variable_set('dashboard_swf_path', $edit['swf_path']);
 			variable_set('dashboard_config_path', $edit['config_path']);
+		// replace the variable_set's with a drupal_write_record() or db_merge()
+*/
+		$record = array(
+			'dashboard_delta' => $delta,
+			'dashboard_width' => $edit['width'],
+			'dashboard_height' => $edit['height'],
+			'dashboard_swf_path' => $edit['swf_path'],
+			'dashboard_config_path' => $edit['config_path'],
+			'module' => 'dashboard', // Ideally use query result here
+		);	
+
+		$table = 'multigraph_dashboard';
+		drupal_write_record($table, $record);
+	}	
 
 /*
-			db_merge('dashboard_mugl')
-//			->key(array('mgid' => ??? )) // How do I get the mgid key?
-				->key(array('mgid' => 1 )) // Sets mgid to 1 to limit to one row
-				->fields(array(
-//				'mgid' => ???,
-					'mgid' => 1,
-					'mugl' => $edit['mugl']['value'],
-				))
- not necessary since the fields are the same
-				->updateFields(array(	
-					'mgid' => 1,
-					'mugl' => $edit['mugl']['value'],
-				))
-
-				->execute();
+	if ($edit['orig_delta'] == 'multigraph_dashboard') {
+	// put query for multiblock dashboard blocks here
+	}
 */
-			break;
-	}	
 }
 
 /*
@@ -164,19 +196,21 @@ function dashboard_block_view($delta = '') {
 function dashboard_contents($delta) {
 	switch($delta) {
 		case 'multigraph_dashboard':
-//			$mugl_query = db_query("SELECT mugl FROM {dashboard_mugl} WHERE mgid = :mgid", array(':mgid' => 1) )->fetchField();	
-//			return array('#markup' => $mugl_query);
 
 			// Initializing config variables
+			$record = db_query('SELECT m.dashboard_delta, m.dashboard_width,
+				m.dashboard_height, m.dashboard_swf_path, m.dashboard_config_path
+				FROM {multigraph_dashboard} m WHERE m.dashboard_delta=:delta', array(':delta' => $delta))->fetchAssoc();
+			$width = $record['dashboard_width'];
+			$height =  $record['dashboard_height'];
+      $swf_path = $record['dashboard_swf_path'];
+      $config_path = $record['dashboard_config_path'];
+/* Switching to using multigraph_dashboard table
 			$swf_path_default = drupal_get_path('module', 'dashboard') . "Dashboard.swf"; 
 			$width = variable_get('dashboard_width', "534");
 			$height = variable_get('dashboard_height', "700");
 			$swf_path = variable_get('dashboard_swf_path', "$swf_path_default");
 			$config_path = variable_get('dashboard_config_path', "http://dashboard.nemac.org/sites/default/files/versions/2012-07-06/data/dashboard.xml");
-/*			$width = 534;
-			$height = 700;
-			$swf_path = drupal_get_path('module', 'dashboard') . "/Dashboard.swf";
-			$config_path = "http://dashboard.nemac.org/sites/default/files/versions/2012-07-06/data/dashboard.xml";
 */
 			// Returning the object to be rendered inside block
 			return array('#markup' => <<<EOF
